@@ -98,7 +98,7 @@ function walker(&$data, $parent = [], $parent_names = [])
         unset($child);
         if( !$filter )
         {
-            echo $padding . " FILTER Daerah tidak ditemukan.\n";
+            echo $padding . " FILTER Daerah tidak ditemukan: {$AREA[ $area_index ]}.\n";
             exit;
         }
     }
@@ -120,6 +120,7 @@ function walker(&$data, $parent = [], $parent_names = [])
     {
         // Skip non filtered
         if( $filter && $filter != $id ) continue;
+
         // Cek ketersediaan data, skip jika blm ada
         if( array_key_exists($id, $data_tersedia) && $data_tersedia[$id] === false)
         {
@@ -127,9 +128,9 @@ function walker(&$data, $parent = [], $parent_names = [])
             continue;
         }
         echo $padding . $child['nama'] . "\n";
-        $child_path   = ltrim( sprintf('%s/%d.json', implode('/', $parent), $id ), "/" );
-        $child_sub = getData( 'wilayah/' . $child_path, $padding, 60 * 60 * 24 * 2 );
-        $new_parent = array_merge( $parent, [$id]);
+        $child_path       = ltrim( sprintf('%s/%d.json', implode('/', $parent), $id ), "/" );
+        $child_sub        = getData( 'wilayah/' . $child_path, $padding, 60 * 60 * 24 * 2 );
+        $new_parent       = array_merge( $parent, [$id]);
         $new_parent_names = array_merge( $parent_names, [$child['nama']]);
         $do_verify ? verify($child_sub, $new_parent, $new_parent_names) :  walker($child_sub, $new_parent, $new_parent_names );
     }
@@ -143,8 +144,9 @@ function verify(&$data, $parent, $parent_names)
 {
     global $result_csv, $result_col, $result_error;
 
-    $padding    = str_repeat(' ', 4 * count($parent));
+    $padding        = str_repeat(' ', 4 * count($parent));
     $property_check = [ 'chart', /* 'images', 'pemilih_j', 'pengguna_j',  */ 'suara_sah', 'suara_tidak_sah', 'suara_total' ];
+
     foreach ($data as $id => &$child)
     {
         $path   = sprintf('hhcw/ppwp/%s/%d.json', implode('/', $parent), $id );
@@ -158,18 +160,20 @@ function verify(&$data, $parent, $parent_names)
                 continue 2;
             }
         }
-        // 21 JKW, 22 PBW
-        // Hitung total chart dan harus sama dengan suara sah
+
         $kesalahan = [];
         $total_chart = 0;
         foreach ($tps['chart'] as $paslon_id => $suara)
         {
             $total_chart += intval($suara);
         }
+
+        // Hitung total chart dan harus sama dengan suara sah
         if( $total_chart != intval($tps['suara_sah']) )
         {
             $kesalahan[]    = 'Suara sah ' . implode(' + ', $tps['chart']) . ' != ' . $tps['suara_sah'];
         }
+        // Total suara harus sesuai
         if( $total_chart + intval($tps['suara_tidak_sah']) != intval($tps['suara_total']) )
         {
             $kesalahan[]    = 'Total suara ' . $total_chart . ' + ' . intval($tps['suara_tidak_sah']) . ' != ' . intval($tps['suara_total']);
