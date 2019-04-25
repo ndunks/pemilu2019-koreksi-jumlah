@@ -1,14 +1,20 @@
 <?php
 /**
  * BARASOFT - Just for fun
+ * Usage
+ * php koreksi.php [ Provinsi ] [ Kabupaten ] [ Kecamatan ] [ Desa ] [ -v | --verbose ] [ -nc | --no-cache ]
+ * Semua parameter bersifat opsional
+ *  -v Verbose mode
+ * Contoh:
+ *      php koreksi.php "Jawa Tengah" Banjarnegara
  */
+
 if( ! function_exists('curl_exec') )    die("ERROR: Dibutuhkan extensi CURL\n");
 if( ! function_exists('json_decode') )  die("ERROR: Dibutuhkan extensi JSON\n");
 
 define( 'CACHE_DIR', "cache" );
 define( 'MAX_RETRY', 10 );
 define( 'END_POINT', "https://pemilu2019.kpu.go.id/static/json/" );
-define( 'VERBOSE', strpos( implode( ' ', array_map( 'strtolower', array_slice($argv, 1) ) ), '-v') !== false );
 define( 'CURL_OPT', [
     CURLOPT_RETURNTRANSFER => true,
     CURLOPT_ENCODING => 'gzip',
@@ -16,6 +22,26 @@ define( 'CURL_OPT', [
     CURLOPT_TIMEOUT => 15,
     CURLOPT_SSL_VERIFYPEER => false
 ]);
+
+// Filter area
+$AREA = [];
+// Argument process
+foreach ( array_map( 'strtolower', array_slice($argv, 1) ) as $val)
+{
+    if( $val == '-v' || $val == '--verbose' )
+    {
+        if(!defined('VERBOSE')) define('VERBOSE', true);
+    }elseif($val == '-nc' || $val == '--no-cache')
+    {
+        if(!defined('NOCACHE')) define('NOCACHE', true);
+    }
+    else{
+        $AREA[] = strtoupper( $val );
+    }
+}
+
+if(!defined('VERBOSE')) define('VERBOSE', false);
+if(!defined('NOCACHE')) define('NOCACHE', false);
 
 if( VERBOSE )
 {
@@ -52,14 +78,54 @@ fclose($result_csv);
 
 function walker(&$data, $parent = [], $parent_names = [])
 {
-    $do_verify  = count($parent) >= 3;
-    $padding    = str_repeat(' ', 4 * count($parent));
-    if( VERBOSE )
+    global $AREA;
+
+    $area_index = count($parent);
+    $do_verify  = $area_index >= 3;
+    $padding    = str_repeat(' ', 4 * $area_index);
+    $filter     = null;
+    if( isset($AREA[ $area_index ]) )
     {
-        echo $padding . "** DEPTH: " . count($parent) . "\n";
+        // Cek apakah area yg di filter ada
+        foreach ($data as $id => &$child)
+        {
+            if( $AREA[ $area_index ] == trim( $child['nama'] ) )
+            {
+                $filter = $id;
+                break;
+            }
+        }
+        unset($child);
+        if( !$filter )
+        {
+            echo $padding . " FILTER Daerah tidak ditemukan.\n";
+            exit;
+        }
+    }
+
+    $data_tersedia = [];
+    if( count($parent) )
+    {
+        $result_data = getData( sprintf('hhcw/ppwp/%s.json', implode('/', $parent)) );
+        if( array_key_exists('table', $result_data ))
+        {
+            foreach( $result_data['table'] as $id => &$table_row)
+            {
+                $data_tersedia[ $id ] = !empty( join($table_row) );
+            }
+            unset( $table_row );
+        }
     }
     foreach ($data as $id => &$child)
     {
+        // Skip non filtered
+        if( $filter && $filter != $id ) continue;
+        // Cek ketersediaan data, skip jika blm ada
+        if( array_key_exists($id, $data_tersedia) && $data_tersedia[$id] === false)
+        {
+            echo $padding . $child['nama'] . ": BELUM ADA DATA, Skipped.\n";
+            continue;
+        }
         echo $padding . $child['nama'] . "\n";
         $child_path   = ltrim( sprintf('%s/%d.json', implode('/', $parent), $id ), "/" );
         $child_sub = getData( 'wilayah/' . $child_path, $padding, 60 * 60 * 24 * 2 );
@@ -70,6 +136,9 @@ function walker(&$data, $parent = [], $parent_names = [])
     unset($child);
 }
 
+/**
+ * Verifikasi hasil hitung
+ */
 function verify(&$data, $parent, $parent_names)
 {
     global $result_csv, $result_col, $result_error;
@@ -129,10 +198,10 @@ function verify(&$data, $parent, $parent_names)
  * get data from web KPU
  * @param path: HTTP URL json end point
  * @param padding: String padding tab
- * @param cache_ttl: Allowed fresh cached file. set zero for disable cache
+ * @param cache_ttl: Allowed fresh cached file. set zero for disable cache. default 12 hour
  * @param is_retry: Internal flag of retried
  */
-function getData($path, $padding = '',  $cache_ttl = 7200, $is_retry = 0)
+function getData($path, $padding = '',  $cache_ttl = 43200, $is_retry = 0)
 {
 
     $cache_file = CACHE_DIR . DIRECTORY_SEPARATOR . strtr($path, '/', DIRECTORY_SEPARATOR);
@@ -146,7 +215,7 @@ function getData($path, $padding = '',  $cache_ttl = 7200, $is_retry = 0)
         echo $padding . "**  " . ($is_retry ? "RETRY $is_retry" : "GET") . " $path ";
     }
     // Check is cache fresh?
-    if( $cache_ttl > 0 && file_exists( $cache_file ) && filemtime( $cache_file ) + $cache_ttl > time() )
+    if( NOCACHE == false && $cache_ttl > 0 && file_exists( $cache_file ) && filemtime( $cache_file ) + $cache_ttl > time() )
     {
         if( VERBOSE )
         {
@@ -159,6 +228,7 @@ function getData($path, $padding = '',  $cache_ttl = 7200, $is_retry = 0)
     curl_setopt_array( $ch, CURL_OPT );
     $body   = curl_exec( $ch );
     $code   = curl_getinfo( $ch, CURLINFO_HTTP_CODE );
+    curl_close( $ch );
     if( empty($body) || $code != 200 )
     {
         if( VERBOSE )
