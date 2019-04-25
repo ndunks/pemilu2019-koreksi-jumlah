@@ -135,7 +135,7 @@ function verify(&$data, $parent, $parent_names)
 function getData($path, $padding = '',  $cache_ttl = 600, $is_retry = 0)
 {
 
-    $cache_file = CACHE_DIR . DIRECTORY_SEPARATOR . $path;
+    $cache_file = CACHE_DIR . DIRECTORY_SEPARATOR . strtr($path, '/', DIRECTORY_SEPARATOR);
     if( !is_dir( dirname($cache_file) ) && !mkdir(dirname($cache_file), 0755, true))
     {
         die("Tidak bisa bikin folder: " . dirname($cache_file) . "\n");
