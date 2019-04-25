@@ -1,12 +1,14 @@
 {
-    // See https://go.microsoft.com/fwlink/?LinkId=733558
-    // for the documentation about the tasks.json format
+    // install nodemon secara global `npm install -g nodemon`
     "version": "2.0.0",
     "tasks": [
         {
             "label": "run-watch",
             "type": "shell",
-            "command": "nodemon.cmd -w koreksi.php --exec 'php koreksi.php -v'",
+            "windows": {
+                "command": "nodemon.cmd -w koreksi.php --exec 'php koreksi.php -v'",    
+            },
+            "command": "nodemon -w koreksi.php --exec 'php koreksi.php -v'",
             "problemMatcher": []
         }
     ]
