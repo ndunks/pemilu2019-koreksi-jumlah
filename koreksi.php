@@ -89,14 +89,14 @@ function walker(&$data, $parent = [], $parent_names = [])
         // Cek apakah area yg di filter ada
         foreach ($data as $id => &$child)
         {
-            if( $AREA[ $area_index ] == trim( $child['nama'] ) )
+            if( $AREA[ $area_index ] == strtoupper( trim( $child['nama'] ) ) )
             {
                 $filter = $id;
                 break;
             }
         }
         unset($child);
-        if( !$filter )
+        if( is_null($filter) )
         {
             echo $padding . " FILTER Daerah tidak ditemukan: {$AREA[ $area_index ]}.\n";
             exit;
@@ -145,18 +145,18 @@ function verify(&$data, $parent, $parent_names)
     global $result_csv, $result_col, $result_error;
 
     $padding        = str_repeat(' ', 4 * count($parent));
-    $property_check = [ 'chart', /* 'images', 'pemilih_j', 'pengguna_j',  */ 'suara_sah', 'suara_tidak_sah', 'suara_total' ];
+    $property_check = [ 'chart', 'suara_sah', 'suara_tidak_sah', 'suara_total' ];
 
     foreach ($data as $id => &$child)
     {
         $path   = sprintf('hhcw/ppwp/%s/%d.json', implode('/', $parent), $id );
         $tps = getData( $path, $padding );
-        echo $padding . $child['nama'] . " :\t";
+        echo $padding . $child['nama'] . " : ";
         foreach ($property_check as $key)
         {
             if( ! array_key_exists($key, $tps) )
             {
-                echo "Missing $key \n";
+                echo "DATA BELUM ADA. ( Missing $key )\n";
                 continue 2;
             }
         }
@@ -180,7 +180,7 @@ function verify(&$data, $parent, $parent_names)
         }
         if( count($kesalahan) )
         {
-            echo " SALAH! " . implode( " dan ", $kesalahan );
+            echo "SALAH! " . implode( " dan ", $kesalahan );
             $result_error ++;
             $cols = $parent_names;
             while( count($cols) < $result_col - 2 )
