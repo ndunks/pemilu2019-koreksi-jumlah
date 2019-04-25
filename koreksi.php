@@ -75,7 +75,7 @@ function verify(&$data, $parent, $parent_names)
     global $result_csv, $result_col, $result_error;
 
     $padding    = str_repeat(' ', 4 * count($parent));
-    $property_check = [ 'chart', 'images', 'pemilih_j', 'pengguna_j', 'suara_sah', 'suara_tidak_sah', 'suara_total' ];
+    $property_check = [ 'chart', /* 'images', 'pemilih_j', 'pengguna_j',  */ 'suara_sah', 'suara_tidak_sah', 'suara_total' ];
     foreach ($data as $id => &$child)
     {
         $path   = sprintf('hhcw/ppwp/%s/%d.json', implode('/', $parent), $id );
@@ -99,11 +99,11 @@ function verify(&$data, $parent, $parent_names)
         }
         if( $total_chart != intval($tps['suara_sah']) )
         {
-            $kesalahan[]    = 'Jumlah Suara sah tidak sama dengan total suara';
+            $kesalahan[]    = 'Suara sah ' . implode(' + ', $tps['chart']) . ' != ' . $tps['suara_sah'];
         }
         if( $total_chart + intval($tps['suara_tidak_sah']) != intval($tps['suara_total']) )
         {
-            $kesalahan[]    = 'Jumlah total tidak sesuai dengan total suara + tidak sah';
+            $kesalahan[]    = 'Total suara ' . $total_chart . ' + ' . intval($tps['suara_tidak_sah']) . ' != ' . intval($tps['suara_total']);
         }
         if( count($kesalahan) )
         {
@@ -132,7 +132,7 @@ function verify(&$data, $parent, $parent_names)
  * @param cache_ttl: Allowed fresh cached file. set zero for disable cache
  * @param is_retry: Internal flag of retried
  */
-function getData($path, $padding = '',  $cache_ttl = 3600, $is_retry = 0)
+function getData($path, $padding = '',  $cache_ttl = 7200, $is_retry = 0)
 {
 
     $cache_file = CACHE_DIR . DIRECTORY_SEPARATOR . strtr($path, '/', DIRECTORY_SEPARATOR);
