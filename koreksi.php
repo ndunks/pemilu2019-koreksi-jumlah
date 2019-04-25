@@ -47,8 +47,8 @@ walker( $wilayah_nasional );
 echo "DONE, total kesalahan: $result_error\n";
 fputcsv($result_csv, ['TOTAL SALAH:', $result_error, '','','',''] );
 fclose($result_csv);
-// cek luar negeri
-// $wilayah_luarnegeri = getData( sprintf('wilayah/ln.json') );
+
+// todo: cek luar negeri, kayaknya strukturnya beda
 
 function walker(&$data, $parent = [], $parent_names = [])
 {
@@ -62,7 +62,7 @@ function walker(&$data, $parent = [], $parent_names = [])
     {
         echo $padding . $child['nama'] . "\n";
         $child_path   = ltrim( sprintf('%s/%d.json', implode('/', $parent), $id ), "/" );
-        $child_sub = getData( 'wilayah/' . $child_path, $padding );
+        $child_sub = getData( 'wilayah/' . $child_path, $padding, 60 * 60 * 24 * 2 );
         $new_parent = array_merge( $parent, [$id]);
         $new_parent_names = array_merge( $parent_names, [$child['nama']]);
         $do_verify ? verify($child_sub, $new_parent, $new_parent_names) :  walker($child_sub, $new_parent, $new_parent_names );
@@ -132,7 +132,7 @@ function verify(&$data, $parent, $parent_names)
  * @param cache_ttl: Allowed fresh cached file. set zero for disable cache
  * @param is_retry: Internal flag of retried
  */
-function getData($path, $padding = '',  $cache_ttl = 600, $is_retry = 0)
+function getData($path, $padding = '',  $cache_ttl = 3600, $is_retry = 0)
 {
 
     $cache_file = CACHE_DIR . DIRECTORY_SEPARATOR . strtr($path, '/', DIRECTORY_SEPARATOR);
